@@ -89,8 +89,16 @@ func checkSymbols(pass *analysis.Pass, c *configuration, file *ast.File) {
 		}
 
 		obj := pass.TypesInfo.ObjectOf(se.Sel)
-		symbol := fmt.Sprintf("%s.%s", obj.Pkg().Path(), obj.Name())
+		if obj.Pkg() == nil {
+			return true
+		}
 
+		path := obj.Pkg().Path()
+		if idx := strings.LastIndex(obj.Pkg().Path(), "vendor/"); idx > 0 {
+			path = path[idx+7:]
+		}
+
+		symbol := fmt.Sprintf("%s.%s", path, obj.Name())
 		repl, ok := c.symbols[symbol]
 		if !ok {
 			return true

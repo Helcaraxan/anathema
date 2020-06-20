@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 
+	"external"
+
 	"pkg/internal/forbidden" // want `pkg/internal/forbidden should not be used`
 	"pkg/internal/helpers"
 	context "pkg/internal/old" // want `pkg/internal/old should be replaced with pkg/internal/new`
@@ -15,7 +17,7 @@ var (
 	v   = helpers.Variable              // want `pkg/internal/helpers.Variable should not be used`
 	fun = helpers.FuncFactory()         // want `pkg/internal/helpers.FuncFactory should not be used`
 	st  = helpers.StructFactory().Field // want `pkg/internal/helpers.StructFactory should not be used`
-	fs  = forbidden.Deprecated
+	e   = external.External             // want `external.External should not be used`
 )
 
 func Forbidden(
@@ -38,5 +40,6 @@ func main() {
 
 var (
 	// Check that nested fields are not collapsed with the top-level package selector.
-	f = helpers.Struct.StructFactory
+	f  = helpers.Struct.StructFactory
+	fs = forbidden.Deprecated
 )

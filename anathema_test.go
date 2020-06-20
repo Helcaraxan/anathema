@@ -13,6 +13,7 @@ func TestAnalysis(t *testing.T) {
 			"pkg/internal/old=pkg/internal/new",
 		},
 		Symbols: []string{
+			"external.External",
 			"pkg/internal/helpers.Constant",
 			"pkg/internal/helpers.Variable",
 			"pkg/internal/helpers.FuncFactory",
