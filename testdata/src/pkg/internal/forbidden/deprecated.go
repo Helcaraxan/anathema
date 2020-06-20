@@ -1,0 +1,3 @@
+package forbidden
+
+const Deprecated = ""
