@@ -88,8 +88,10 @@ func checkSymbols(pass *analysis.Pass, c *configuration, file *ast.File) {
 			return true
 		}
 
-		obj := pass.TypesInfo.ObjectOf(se.Sel)
-		if obj.Pkg() == nil {
+		obj, ok := pass.TypesInfo.Uses[se.Sel]
+		if !ok {
+			return true
+		} else if obj.Pkg() == nil {
 			return true
 		}
 

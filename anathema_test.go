@@ -15,11 +15,11 @@ func TestAnalysis(t *testing.T) {
 		Symbols: []string{
 			"external.External",
 			"pkg/internal/helpers.Constant",
-			"pkg/internal/helpers.Variable",
 			"pkg/internal/helpers.FuncFactory",
+			"pkg/internal/helpers.InterfaceType",
 			"pkg/internal/helpers.StructFactory",
 			"pkg/internal/helpers.StructType",
-			"pkg/internal/helpers.InterfaceType",
+			"pkg/internal/helpers.Variable",
 			"pkg/internal/old.Context=pkg/internal/new.Context",
 		},
 	}

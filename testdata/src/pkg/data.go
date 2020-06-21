@@ -13,21 +13,37 @@ import (
 
 // Forbidden symbols.
 var (
-	c   = helpers.Constant              // want `pkg/internal/helpers.Constant should not be used`
-	v   = helpers.Variable              // want `pkg/internal/helpers.Variable should not be used`
+	// Check that direct symbol references are picked up, including in vendored dependencies.
+	c = helpers.Constant  // want `pkg/internal/helpers.Constant should not be used`
+	v = helpers.Variable  // want `pkg/internal/helpers.Variable should not be used`
+	e = external.External // want `external.External should not be used`
+
+	// Check that direct symbol references of functions are picked up in calls and nested selectors.
 	fun = helpers.FuncFactory()         // want `pkg/internal/helpers.FuncFactory should not be used`
 	st  = helpers.StructFactory().Field // want `pkg/internal/helpers.StructFactory should not be used`
-	e   = external.External             // want `external.External should not be used`
 )
 
 func Forbidden(
+	// Check that type references are picked up in function definitions.
 	_ helpers.StructType, // want `pkg/internal/helpers.StructType should not be used`
 	_ helpers.InterfaceType, // want `pkg/internal/helpers.InterfaceType should not be used`
 ) {
 }
 
+type MyStruct struct {
+	// Check that type references in embedded structs are picked up.
+	helpers.StructType    // want `pkg/internal/helpers.StructType should not be used`
+	helpers.InterfaceType // want `pkg/internal/helpers.InterfaceType should not be used`
+}
+
+type MyInterface interface {
+	// Check that type references in embedded interfaces are picked up.
+	helpers.InterfaceType // want `pkg/internal/helpers.InterfaceType should not be used`
+}
+
 // Replaced symbols.
 var (
+	// Check that we get a correct message when a replacement is specified.
 	_ context.Context = context.Background() // want `pkg/internal/old.Context should be replaced with pkg/internal/new.Context`
 )
 
@@ -35,7 +51,10 @@ var (
 func main() {
 	// Check that variables that shadow package names do not trigger the analysis.
 	helpers := struct{ Variable []string }{}
-	fmt.Println(helpers.Variable)
+
+	var err error
+	// And that selections on universe-scoped symbols (e.g errors.Error()) do not fail.
+	fmt.Println(helpers.Variable, err.Error())
 }
 
 var (
@@ -43,3 +62,7 @@ var (
 	f  = helpers.Struct.StructFactory
 	fs = forbidden.Deprecated
 )
+
+type StructType struct {
+	// Check that we can declare types with names of symbols that are excluded in other packages.
+}
