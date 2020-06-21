@@ -12,89 +12,210 @@ func TestConfiguration(t *testing.T) {
 		config   Configuration
 		expected *configuration
 	}{
-		"ImportPathStandard": {
+		"PackageStandard": {
 			config: Configuration{
-				Symbols: []string{"go/ast.File"},
+				Packages: Packages{
+					Rules: []PackageRule{{Path: "go/ast"}},
+				},
 			},
 			expected: &configuration{
-				packages: map[string]string{},
-				symbols:  map[string]string{"go/ast.File": ""},
+				packages: map[string]string{"go/ast": ""},
+				symbols:  map[string]string{},
 			},
 		},
-		"ImportPathWithDots": {
+		"PackageRefactored": {
 			config: Configuration{
-				Symbols: []string{"golang.org/x/net/context.Context"},
-			},
-			expected: &configuration{
-				packages: map[string]string{},
-				symbols:  map[string]string{"golang.org/x/net/context.Context": ""},
-			},
-		},
-		"SymbolsRefactored": {
-			config: Configuration{
-				Packages: []string{
-					"fmt.{Print,Printf,Println}",
+				Packages: Packages{
+					Rules: []PackageRule{{Path: "fmt,go/{ast,parser,token},io{,/ioutil},regexp"}},
 				},
 			},
 			expected: &configuration{
 				packages: map[string]string{
-					"fmt.Print":   "",
-					"fmt.Printf":  "",
-					"fmt.Println": "",
+					"fmt":       "",
+					"go/ast":    "",
+					"go/parser": "",
+					"go/token":  "",
+					"io":        "",
+					"io/ioutil": "",
+					"regexp":    "",
 				},
 				symbols: map[string]string{},
 			},
 		},
-		"Replacements": {
+		"PackageReplacements": {
 			config: Configuration{
-				Symbols: []string{"source/pkg.Symbol=target/pkg.Symbol"},
+				Packages: Packages{
+					Rules: []PackageRule{{
+						Path:        "go/{ast,parser,token}",
+						Replacement: "alternative/{ast,parser,token}",
+					}},
+				},
 			},
 			expected: &configuration{
-				packages: map[string]string{},
-				symbols:  map[string]string{"source/pkg.Symbol": "target/pkg.Symbol"},
+				packages: map[string]string{
+					"go/ast":    "alternative/ast",
+					"go/parser": "alternative/parser",
+					"go/token":  "alternative/token",
+				},
+				symbols: map[string]string{},
 			},
 		},
-		"ReplacementsRefactored": {
+		"SymbolStandard": {
 			config: Configuration{
-				Symbols: []string{"source/pkg.{Print,Printf,Println}=source/pkg.{Sprint,Sprintf,Sprintln}"},
+				Symbols: Symbols{
+					Rules: []SymbolRule{{
+						Package: "fmt",
+						Name:    "Print",
+					}},
+				},
 			},
 			expected: &configuration{
 				packages: map[string]string{},
 				symbols: map[string]string{
-					"source/pkg.Print":   "source/pkg.Sprint",
-					"source/pkg.Printf":  "source/pkg.Sprintf",
-					"source/pkg.Println": "source/pkg.Sprintln",
+					"fmt.Print": "",
 				},
 			},
 		},
-		"MissingSymbol": {
+		"SymbolChangedPackage": {
 			config: Configuration{
-				Symbols: []string{"go/ast"},
+				Symbols: Symbols{
+					Rules: []SymbolRule{{
+						Package:            "fmt",
+						Name:               "Print",
+						ReplacementPackage: "alternative",
+					}},
+				},
+			},
+			expected: &configuration{
+				packages: map[string]string{},
+				symbols: map[string]string{
+					"fmt.Print": "alternative.Print",
+				},
 			},
 		},
-		"InvalidSourceSymbol": {
+		"SymbolChangedName": {
 			config: Configuration{
-				Symbols: []string{"go/ast=replacement/pkg.Type"},
+				Symbols: Symbols{
+					Rules: []SymbolRule{{
+						Package:         "fmt",
+						Name:            "Print",
+						ReplacementName: "Println",
+					}},
+				},
+			},
+			expected: &configuration{
+				packages: map[string]string{},
+				symbols: map[string]string{
+					"fmt.Print": "fmt.Println",
+				},
 			},
 		},
-		"InvalidReplacementSymbol": {
+		"SymbolChangedNameAndPackage": {
 			config: Configuration{
-				Symbols: []string{"go/ast.Type=replacement/pkg"},
+				Symbols: Symbols{
+					Rules: []SymbolRule{{
+						Package:            "fmt",
+						Name:               "Print",
+						ReplacementPackage: "myfmt",
+						ReplacementName:    "Println",
+					}},
+				},
+			},
+			expected: &configuration{
+				packages: map[string]string{},
+				symbols: map[string]string{
+					"fmt.Print": "myfmt.Println",
+				},
 			},
 		},
-		"TooManySelectors": {
+		"SymbolComplex": {
 			config: Configuration{
-				Symbols: []string{"go/ast.Foo.Bar"},
+				Symbols: Symbols{
+					Rules: []SymbolRule{{
+						Package:            "fmt",
+						Name:               "Print,Printf,Println",
+						ReplacementPackage: "myfmt",
+						ReplacementName:    "Fprint,Fprintf,Fprintln",
+					}},
+				},
+			},
+			expected: &configuration{
+				packages: map[string]string{},
+				symbols: map[string]string{
+					"fmt.Print":   "myfmt.Fprint",
+					"fmt.Printf":  "myfmt.Fprintf",
+					"fmt.Println": "myfmt.Fprintln",
+				},
 			},
 		},
-		"TooManyReplacements": {
+		"PackageMissingPath": {
 			config: Configuration{
-				Symbols: []string{"source/pkg.Symbol=target/pkg.Symbol=intruder/pkg.Symbol"},
+				Packages: Packages{
+					Rules: []PackageRule{{}},
+				},
 			},
 		},
-		"MismatchedRefactor": {
+		"PackageMismatchedReplacement": {
 			config: Configuration{
-				Symbols: []string{"source/pkg.{Print,Printf,Println}=source/pkg.{Sprint,Sprintf}"},
+				Packages: Packages{
+					Rules: []PackageRule{{
+						Path:        "strings,bytes",
+						Replacement: "mystrings",
+					}},
+				},
+			},
+		},
+		"PackageInvalidReplacement": {
+			config: Configuration{
+				Packages: Packages{
+					Rules: []PackageRule{{Path: "foo", Replacement: "bar{"}},
+				},
+			},
+		},
+		"SymbolMissingPackage": {
+			config: Configuration{
+				Symbols: Symbols{
+					Rules: []SymbolRule{{Name: "Print"}},
+				},
+			},
+		},
+		"SymbolMissingName": {
+			config: Configuration{
+				Symbols: Symbols{
+					Rules: []SymbolRule{{Package: "fmt"}},
+				},
+			},
+		},
+		"SymbolMismatchedReplacement": {
+			config: Configuration{
+				Symbols: Symbols{
+					Rules: []SymbolRule{{
+						Package:         "fmt",
+						Name:            "Print",
+						ReplacementName: "Printf,Println",
+					}},
+				},
+			},
+		},
+		"SymbolMultiplePackages": {
+			config: Configuration{
+				Symbols: Symbols{
+					Rules: []SymbolRule{{Package: "foo,bar", Name: "Print"}},
+				},
+			},
+		},
+		"SymbolMultipleReplacementPackages": {
+			config: Configuration{
+				Symbols: Symbols{
+					Rules: []SymbolRule{{Package: "foo", Name: "Print", ReplacementPackage: "foo,bar"}},
+				},
+			},
+		},
+		"SymbolsInvalidReplacement": {
+			config: Configuration{
+				Symbols: Symbols{
+					Rules: []SymbolRule{{Package: "foo", Name: "Print", ReplacementName: "{Bar,}"}},
+				},
 			},
 		},
 	}
@@ -102,6 +223,8 @@ func TestConfiguration(t *testing.T) {
 	for name := range testcases {
 		testcase := testcases[name]
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			result, err := testcase.config.validate()
 			if testcase.expected == nil {
 				require.Error(t, err)

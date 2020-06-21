@@ -8,19 +8,23 @@ import (
 
 func TestAnalysis(t *testing.T) {
 	testConfig := &Configuration{
-		Packages: []string{
-			"pkg/internal/forbidden",
-			"pkg/internal/old=pkg/internal/new",
+		Packages: Packages{
+			Rules: []PackageRule{
+				{Path: "pkg/internal/forbidden"},
+				{Path: "pkg/internal/old", Replacement: "pkg/internal/new"},
+			},
 		},
-		Symbols: []string{
-			"external.External",
-			"pkg/internal/helpers.Constant",
-			"pkg/internal/helpers.FuncFactory",
-			"pkg/internal/helpers.InterfaceType",
-			"pkg/internal/helpers.StructFactory",
-			"pkg/internal/helpers.StructType",
-			"pkg/internal/helpers.Variable",
-			"pkg/internal/old.Context=pkg/internal/new.Context",
+		Symbols: Symbols{
+			Rules: []SymbolRule{
+				{Package: "external", Name: "External"},
+				{Package: "pkg/internal/helpers", Name: "Constant"},
+				{Package: "pkg/internal/helpers", Name: "FuncFactory"},
+				{Package: "pkg/internal/helpers", Name: "InterfaceType"},
+				{Package: "pkg/internal/helpers", Name: "StructFactory"},
+				{Package: "pkg/internal/helpers", Name: "StructType"},
+				{Package: "pkg/internal/helpers", Name: "Variable"},
+				{Package: "pkg/internal/old", Name: "Context", ReplacementPackage: "pkg/internal/new", ReplacementName: "Context"},
+			},
 		},
 	}
 	analysistest.Run(t, analysistest.TestData(), Analysis(testConfig), "pkg")
