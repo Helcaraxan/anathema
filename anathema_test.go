@@ -6,7 +6,9 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
-func TestAnalysis(t *testing.T) {
+func TestBlacklist(t *testing.T) {
+	t.Parallel()
+
 	testConfig := &Configuration{
 		Packages: Packages{
 			Rules: []PackageRule{
@@ -27,5 +29,26 @@ func TestAnalysis(t *testing.T) {
 			},
 		},
 	}
-	analysistest.Run(t, analysistest.TestData(), Analysis(testConfig), "pkg")
+	analysistest.Run(t, analysistest.TestData(), Analysis(testConfig), "pkg/blacklist")
+}
+
+func TestWhitelist(t *testing.T) {
+	t.Parallel()
+
+	testConfig := &Configuration{
+		Packages: Packages{
+			Whitelist: true,
+			Rules: []PackageRule{
+				{Path: "pkg/internal/helpers"},
+				{Path: "pkg/internal/new"},
+			},
+		},
+		Symbols: Symbols{
+			Whitelist: true,
+			Rules: []SymbolRule{
+				{Package: "pkg/internal/new", Name: "Background"},
+			},
+		},
+	}
+	analysistest.Run(t, analysistest.TestData(), Analysis(testConfig), "pkg/whitelist")
 }

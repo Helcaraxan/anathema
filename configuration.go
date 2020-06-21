@@ -73,27 +73,70 @@ func (c *Configuration) validate() (*configuration, error) {
 		whitelistSymbols:  c.Symbols.Whitelist,
 	}
 
-	config.packages, err = expandPackageRules(c.Packages.Rules)
+	config.packages, err = expandPackageRules(c.Packages.Rules, c.Packages.Whitelist)
 	if err != nil {
 		return nil, err
 	}
 
-	config.symbols, err = expandSymbolRules(c.Symbols.Rules)
+	config.symbols, err = expandSymbolRules(c.Symbols.Rules, c.Symbols.Whitelist)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = checkInconsistencies(config); err != nil {
 		return nil, err
 	}
 
 	return config, nil
 }
 
-func expandPackageRules(rules []PackageRule) (map[string]string, error) {
+func checkInconsistencies(c *configuration) error {
+	pkgMap := map[string]bool{}
+	for p := range c.packages {
+		pkgMap[p] = true
+	}
+
+	for source, target := range c.symbols {
+		var sourcePkg, targetPkg string
+		sourcePkg = source[:strings.LastIndex(source, ".")]
+		if target != "" {
+			targetPkg = target[:strings.LastIndex(target, ".")]
+		}
+
+		if c.whitelistPackages {
+			if c.whitelistSymbols && !pkgMap[sourcePkg] {
+				return fmt.Errorf("cannot whitelist symbol %s as %s is not whitelisted in the package rules", source, sourcePkg)
+			} else if !c.whitelistSymbols && targetPkg != "" && !pkgMap[targetPkg] {
+				return fmt.Errorf("cannot replace %s with %s as %s is not whitelisted in the package rules", source, target, targetPkg)
+			}
+		} else {
+			if c.whitelistSymbols && pkgMap[sourcePkg] {
+				return fmt.Errorf("cannot whitelist symbol %s as %s is blacklisted in the package rules", source, sourcePkg)
+			} else if !c.whitelistSymbols && targetPkg != "" && pkgMap[targetPkg] {
+				return fmt.Errorf("cannot replace %s with %s as %s is blacklisted in the package rules", source, target, targetPkg)
+			}
+		}
+
+		if !c.whitelistPackages && !c.whitelistSymbols {
+			if replPkg := c.packages[sourcePkg]; replPkg != "" && targetPkg != "" && replPkg != targetPkg {
+				return fmt.Errorf("cannot replace %s with %s as %s is replaced with %s in the package rules", source, target, sourcePkg, replPkg)
+			}
+		}
+	}
+	return nil
+}
+
+func expandPackageRules(rules []PackageRule, whitelist bool) (map[string]string, error) {
 	expanded := map[string]string{}
 	for _, r := range rules {
+		if whitelist && r.Replacement != "" {
+			return nil, fmt.Errorf("package rule %+v can not specify a replacement as packages are being whitelisted", r)
+		}
+
 		packages, err := expandLine(r.Path)
 		if err != nil {
 			return nil, fmt.Errorf("package rule %+v contained an error in its path: %s", r, err)
 		}
-		fmt.Println(packages)
 
 		var replacements []string
 		if r.Replacement != "" {
@@ -116,15 +159,18 @@ func expandPackageRules(rules []PackageRule) (map[string]string, error) {
 	return expanded, nil
 }
 
-func expandSymbolRules(rules []SymbolRule) (map[string]string, error) {
+func expandSymbolRules(rules []SymbolRule, whitelist bool) (map[string]string, error) {
 	expanded := map[string]string{}
 	for _, r := range rules {
-		if r.Package == "" {
+		switch {
+		case r.Package == "":
 			return nil, fmt.Errorf("symbol rule %+v is missing a package path", r)
-		} else if strings.Count(r.Package, ",") > 0 {
+		case strings.Count(r.Package, ",") > 0:
 			return nil, fmt.Errorf("symbol rule %+v specifies multiple packages which is not supported", r)
-		} else if strings.Count(r.ReplacementPackage, ",") > 0 {
+		case strings.Count(r.ReplacementPackage, ",") > 0:
 			return nil, fmt.Errorf("symbol rule %+v specifies multiple packages as replacement which is not supported", r)
+		case whitelist && (r.ReplacementPackage != "" || r.ReplacementName != ""):
+			return nil, fmt.Errorf("symbol rule %+v can not specify a replacement as packages are being whitelisted", r)
 		}
 
 		symbols, err := expandLine(r.Name)

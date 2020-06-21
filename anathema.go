@@ -48,7 +48,12 @@ func checkImports(pass *analysis.Pass, c *configuration, file *ast.File) {
 	for _, imp := range file.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
 		repl, ok := c.packages[path]
-		if !ok {
+		if c.whitelistPackages {
+			if !ok {
+				pass.ReportRangef(imp, "%s should not be used", path)
+			}
+			continue
+		} else if !ok {
 			continue
 		}
 
@@ -102,7 +107,12 @@ func checkSymbols(pass *analysis.Pass, c *configuration, file *ast.File) {
 
 		symbol := fmt.Sprintf("%s.%s", path, obj.Name())
 		repl, ok := c.symbols[symbol]
-		if !ok {
+		if c.whitelistSymbols {
+			if !ok {
+				pass.ReportRangef(se, "%s should not be used", symbol)
+			}
+			return true
+		} else if !ok {
 			return true
 		}
 

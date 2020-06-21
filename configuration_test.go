@@ -8,6 +8,8 @@ import (
 )
 
 func TestConfiguration(t *testing.T) {
+	t.Parallel()
+
 	testcases := map[string]struct {
 		config   Configuration
 		expected *configuration
@@ -172,6 +174,14 @@ func TestConfiguration(t *testing.T) {
 				},
 			},
 		},
+		"PackageWhitelistReplacement": {
+			config: Configuration{
+				Packages: Packages{
+					Whitelist: true,
+					Rules:     []PackageRule{{Path: "foo", Replacement: "bar"}},
+				},
+			},
+		},
 		"SymbolMissingPackage": {
 			config: Configuration{
 				Symbols: Symbols{
@@ -218,6 +228,22 @@ func TestConfiguration(t *testing.T) {
 				},
 			},
 		},
+		"SymbolWhitelistReplacementPackage": {
+			config: Configuration{
+				Symbols: Symbols{
+					Whitelist: true,
+					Rules:     []SymbolRule{{Package: "foo", Name: "Bar", ReplacementPackage: "bar"}},
+				},
+			},
+		},
+		"SymbolWhitelistReplacementName": {
+			config: Configuration{
+				Symbols: Symbols{
+					Whitelist: true,
+					Rules:     []SymbolRule{{Package: "foo", Name: "Bar", ReplacementName: "Foo"}},
+				},
+			},
+		},
 	}
 
 	for name := range testcases {
@@ -232,6 +258,51 @@ func TestConfiguration(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, testcase.expected, result)
+		})
+	}
+}
+
+func TestInconsistencyCheck(t *testing.T) {
+	t.Parallel()
+
+	testcases := map[string]configuration{
+		"SymbolReplaceWithBlacklistedPackage": {
+			packages:          map[string]string{"foo/bar": ""},
+			whitelistPackages: false,
+			symbols:           map[string]string{"pkg.Foo": "foo/bar.Func"},
+			whitelistSymbols:  false,
+		},
+		"SymbolReplaceWithNonWhitelistedPackage": {
+			packages:          map[string]string{},
+			whitelistPackages: true,
+			symbols:           map[string]string{"pkg.Foo": "foo/bar.Func"},
+			whitelistSymbols:  false,
+		},
+		"WhitelistedSymbolInBlacklistedPackage": {
+			packages:          map[string]string{"pkg": ""},
+			whitelistPackages: false,
+			symbols:           map[string]string{"pkg.Foo": ""},
+			whitelistSymbols:  true,
+		},
+		"WhitelistedSymbolInNonWhitelistedPackage": {
+			packages:          map[string]string{},
+			whitelistPackages: true,
+			symbols:           map[string]string{"pkg.Foo": ""},
+			whitelistSymbols:  true,
+		},
+		"ConflictingSymbolAndPackageReplace": {
+			packages:          map[string]string{"pkg": "foo/bar"},
+			whitelistPackages: false,
+			symbols:           map[string]string{"pkg.Foo": "bar/foo.Func"},
+			whitelistSymbols:  false,
+		},
+	}
+
+	for name := range testcases {
+		testcase := testcases[name]
+		t.Run(name, func(t *testing.T) {
+			err := checkInconsistencies(&testcase)
+			assert.Error(t, err)
 		})
 	}
 }
