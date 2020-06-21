@@ -14,13 +14,13 @@ import (
 // Forbidden symbols.
 var (
 	// Check that direct symbol references are picked up, including in vendored dependencies.
-	c = helpers.Constant  // want `pkg/internal/helpers.Constant should not be used`
-	v = helpers.Variable  // want `pkg/internal/helpers.Variable should not be used`
-	e = external.External // want `external.External should not be used`
+	_ = helpers.Constant  // want `pkg/internal/helpers.Constant should not be used`
+	_ = helpers.Variable  // want `pkg/internal/helpers.Variable should not be used`
+	_ = external.External // want `external.External should not be used`
 
 	// Check that direct symbol references of functions are picked up in calls and nested selectors.
-	fun = helpers.FuncFactory()         // want `pkg/internal/helpers.FuncFactory should not be used`
-	st  = helpers.StructFactory().Field // want `pkg/internal/helpers.StructFactory should not be used`
+	_ = helpers.FuncFactory()         // want `pkg/internal/helpers.FuncFactory should not be used`
+	_ = helpers.StructFactory().Field // want `pkg/internal/helpers.StructFactory should not be used`
 )
 
 func Forbidden(
@@ -59,8 +59,8 @@ func main() {
 
 var (
 	// Check that nested fields are not collapsed with the top-level package selector.
-	f  = helpers.Struct.StructFactory
-	fs = forbidden.Deprecated
+	_ = helpers.Struct.StructFactory
+	_ = forbidden.Deprecated
 )
 
 type StructType struct {
